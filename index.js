@@ -5,6 +5,9 @@ import moment from 'moment';
 moment().format();
 const app = express()
 
+
+app.use(express.json())
+
 let products = [
     {
         id: 1,
@@ -104,6 +107,55 @@ app.get("/products/:id", (req, res) => {
         idFinded
     })
 })
+
+async function addProduct(product, fail) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (fail === "true") {
+                reject(new Error("Failed to save product"))
+                return
+            }
+            products = [...products, product]
+            resolve(product)
+        }, 500)
+    })
+}
+
+app.post("/products", async (req, res) => {
+    const {fail} = req.query
+    let {name, price, category, image} = req.body
+    if (!name || !price || !category){
+        return res.status(422).json({
+            message: "One or more validation errors occurred."
+        })
+    }
+    if (!image){
+        image = ""
+    }
+    const intPrice = Number(price)
+    if (!Number.isInteger(intPrice) || intPrice <= 0){
+        return res.status(400).json({
+            message: "price had to be positive"
+        })
+    }
+    if (name.trim() === "" || category.trim() === ""){
+        return res.status(422).json({
+            message: "field is required"
+        })
+    }
+    const isDouble = products.find((product) => {
+        return product.name === name
+    })
+    if (isDouble){
+        return res.status(409).json({
+            message: "conflict of name"
+        })
+    }
+
+    const result = await addProduct({name, price, category, image}, fail)
+    return res.status(201).json(result)
+})
+
 
 app.listen(3000, () => {
     console.log('Server is running on http://localhost:3000')
